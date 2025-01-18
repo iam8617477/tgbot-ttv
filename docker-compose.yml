@@ -25,6 +25,7 @@ services:
 
   tgbot-ttv:
     build: .
+    restart: always
     command: >
       sh -c "
         echo 'Waiting 15 seconds before starting...';

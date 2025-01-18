@@ -11,6 +11,7 @@ services:
     networks:
       - public_network
       - app_to_db
+      - shared_network
     depends_on:
       - db
     environment:
@@ -68,6 +69,9 @@ networks:
   app_to_db:
     driver: bridge
     internal: true
+  shared_network:
+    name: project_shared_network
+    driver: bridge
 
 volumes:
   postgres_data:

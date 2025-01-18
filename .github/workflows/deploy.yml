@@ -1,0 +1,49 @@
+name: Deploy Django App to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into Server and Deploy
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.REMOTE_HOST }}
+          username: ${{ secrets.REMOTE_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            echo "Connecting to server..."
+            echo "Running docker system prune..."
+            eval "$(ssh-agent -s)"
+            ssh-add ~/.ssh/${{ secrets.GIT_REPO_KEYNAME }}
+            docker system prune -f
+            if [ ! -d "tgbot-ttv" ]; then
+                echo "Cloning project repository..."
+                git clone ${{ secrets.GIT_REPO_URL }}
+                cd tgbot-ttv
+            else
+                echo "Repository exists. Fetching latest changes..."
+                cd tgbot-ttv
+                git fetch
+                git switch main
+                git reset --hard origin/main
+            fi
+            docker compose -f docker-compose.yml down || echo "Containers are already stopped or not running"
+            echo "Restarting Docker Compose..."
+            SECRET_KEY=${{ secrets.SECRET_KEY }} \
+            DEBUG=${{ secrets.DEBUG }} \
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }} \
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }} \
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }} \
+            POSTGRES_HOST=${{ secrets.POSTGRES_HOST }} \
+            POSTGRES_PORT=${{ secrets.POSTGRES_PORT }} \
+            docker compose -f docker-compose.yml up -d --build
+
+            echo "Deployment complete!"

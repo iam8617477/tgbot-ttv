@@ -45,6 +45,7 @@ jobs:
             POSTGRES_HOST=${{ secrets.POSTGRES_HOST }} \
             POSTGRES_PORT=${{ secrets.POSTGRES_PORT }} \
             TELEGRAM_BOT_TOKEN=${{ secrets.TELEGRAM_BOT_TOKEN }} \
+            HOST_NAME=${{ secrets.HOST_NAME }} \
             docker compose -f docker-compose.yml up -d --build
 
             echo "Deployment complete!"

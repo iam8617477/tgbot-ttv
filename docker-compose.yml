@@ -25,6 +25,7 @@ services:
       - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_PORT=${POSTGRES_PORT}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - HOST_NAME=${HOST_NAME}
 
   tgbot-ttv:
     build: .
@@ -48,6 +49,7 @@ services:
       - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_PORT=${POSTGRES_PORT}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - HOST_NAME=${HOST_NAME}
 
   db:
     image: postgres:13

@@ -27,6 +27,9 @@ DEBUG = os.environ['DEBUG'] == 'True'
 
 ALLOWED_HOSTS = [os.environ['HOST_NAME']]
 
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+
 
 # Application definition
 
@@ -37,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'core',
     'bot',
     'indexer',
 ]

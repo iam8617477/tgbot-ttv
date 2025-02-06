@@ -1,6 +1,5 @@
 from django.db import models
 
-from bot.models import TelegramUser
 from core.models import TimestampedModel
 
 

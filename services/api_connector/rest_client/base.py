@@ -33,7 +33,10 @@ class RestClient:
                 headers=self.headers
             )
 
-        return response
+        if response.status_code >= 200 and response.status_code < 300:
+            return response
+        else:
+            response.raise_for_status()
 
     def get(self, endpoint, params=None, headers=None):
         return self._send_request('GET', endpoint, params=params, headers=headers)

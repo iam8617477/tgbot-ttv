@@ -50,10 +50,19 @@ class Rate(TimestampedModel):
 
 
 class Payment(TimestampedModel):
+    class Type(models.TextChoices):
+        SUBSCRIPTION = 'SUBSCRIPTION'
+
     user = models.ForeignKey(TelegramUser, related_name='payments', on_delete=models.CASCADE)
     tariff = models.ForeignKey(Tariff, related_name='payments', on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=20, decimal_places=10)
     transaction_id = models.CharField(max_length=255, unique=True)
+    type = models.CharField(
+        max_length=20,
+        choices=Type.choices,
+        default=Type.SUBSCRIPTION
+    )
+    is_executed = models.BooleanField(default=False)
 
     def __str__(self):
         return f'Payment of {self.amount} for user {self.user.telegram_id} (Tariff: {self.tariff.name})'

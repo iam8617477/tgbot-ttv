@@ -68,3 +68,4 @@ def test_payment_creation(telegram_user):
     assert payment.tariff == tariff
     assert payment.amount == -100.50
     assert payment.transaction_id == 'payment_123'
+    assert payment.type == Payment.Type.SUBSCRIPTION

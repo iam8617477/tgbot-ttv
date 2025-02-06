@@ -1,3 +1,7 @@
 from django.contrib import admin
 
-# Register your models here.
+
+class DefaultAdmin(admin.ModelAdmin):
+    def get_list_display(self, request):
+        opts = self.model._meta
+        return [field.name for field in opts.get_fields() if not field.is_relation]

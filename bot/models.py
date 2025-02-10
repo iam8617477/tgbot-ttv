@@ -1,3 +1,5 @@
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
 from core.models import TimestampedModel
@@ -17,13 +19,10 @@ class TelegramUser(TimestampedModel):
 
 
 class Tariff(TimestampedModel):
-    class Name(models.TextChoices):
-        FREE_TRIAL = 'FREE_TRIAL'
-        STARTER = 'STARTER'
-        BASIC = 'BASIC'
-
-    name = models.CharField(max_length=50, choices=Name.choices, default=Name.FREE_TRIAL)
+    name = models.CharField(max_length=50, unique=True)
+    description = models.CharField(max_length=1024, blank=True, null=True)
     requests_per_day = models.PositiveIntegerField()
+    amount = models.DecimalField(max_digits=20, decimal_places=10)
 
     def __str__(self):
         return self.name
@@ -36,6 +35,49 @@ class Subscription(TimestampedModel):
     end_date = models.DateField()
     reset_tariff = models.BooleanField(default=False)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['tariff']),
+        ]
+
+
+class Refund(TimestampedModel):
+    address = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=20, decimal_places=10, default=0.00)
+    is_executed = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if self.amount < 0:
+            raise ValueError('Refund amount must be positive')
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Refund with amount {self.amount}'
+
+
+class Payment(models.Model):
+    class Type(models.TextChoices):
+        SUBSCRIPTION = 'SUBSCRIPTION'
+        REFUND = 'REFUND'
+
+    user = models.ForeignKey('TelegramUser', related_name='payments', on_delete=models.CASCADE)
+    related_model_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    related_model_id = models.PositiveIntegerField()
+    related_object = GenericForeignKey('related_model_type', 'related_model_id')
+    amount = models.DecimalField(max_digits=20, decimal_places=10)
+    type = models.CharField(max_length=20, choices=Type.choices)
+    is_executed = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['related_model_type']),
+        ]
+
+    def __str__(self):
+        return f'Payment of {self.amount} for {self.user} ({self.type})'
+
 
 class Rate(TimestampedModel):
     from_contract = models.ForeignKey('indexer.Contract', related_name='rates_from', on_delete=models.CASCADE)
@@ -44,25 +86,10 @@ class Rate(TimestampedModel):
 
     class Meta:
         unique_together = ('from_contract', 'to_contract')
+        indexes = [
+            models.Index(fields=['from_contract']),
+            models.Index(fields=['to_contract']),
+        ]
 
     def __str__(self):
         return f"1 {self.from_contract.name} = {self.rate} {self.to_contract.name}"
-
-
-class Payment(TimestampedModel):
-    class Type(models.TextChoices):
-        SUBSCRIPTION = 'SUBSCRIPTION'
-
-    user = models.ForeignKey(TelegramUser, related_name='payments', on_delete=models.CASCADE)
-    tariff = models.ForeignKey(Tariff, related_name='payments', on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=20, decimal_places=10)
-    transaction_id = models.CharField(max_length=255, unique=True)
-    type = models.CharField(
-        max_length=20,
-        choices=Type.choices,
-        default=Type.SUBSCRIPTION
-    )
-    is_executed = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f'Payment of {self.amount} for user {self.user.telegram_id} (Tariff: {self.tariff.name})'

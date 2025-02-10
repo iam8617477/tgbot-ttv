@@ -8,6 +8,11 @@ class Wallet(TimestampedModel):
     address = models.CharField(max_length=255, unique=True)
     is_current = models.BooleanField(default=False)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['user']),
+        ]
+
 
 class Contract(TimestampedModel):
     address = models.CharField(max_length=255, unique=True)
@@ -24,6 +29,9 @@ class Block(TimestampedModel):
 
     class Meta:
         unique_together = ('contract', 'block_id')
+        indexes = [
+            models.Index(fields=['contract']),
+        ]
 
     def __str__(self):
         return f'Block {self.block_id} for Contract {self.contract.address}'
@@ -40,6 +48,13 @@ class Event(TimestampedModel):
     to_address = models.ForeignKey(Wallet, related_name='events', on_delete=models.CASCADE)
     block = models.ForeignKey(Block, related_name='events', on_delete=models.CASCADE)
     unconfirmed = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['contract_address']),
+            models.Index(fields=['to_address']),
+            models.Index(fields=['block']),
+        ]
 
     def __str__(self):
         return f'Event {self.name} ({self.transaction_id}) in Block {self.block.block_id}'

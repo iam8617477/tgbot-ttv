@@ -1,19 +1,13 @@
-from django.test import TestCase
-
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 
-from bot.models import TelegramUser, Tariff, Subscription, Rate, Payment
+from bot.models import TelegramUser, Tariff, Subscription, Rate, Payment, Refund
 from indexer.models import Contract
 
 
-@pytest.fixture(autouse=True)
-def enable_db_access_for_all_tests(db):
-    pass
-
-
 @pytest.fixture()
-def telegram_user():
+def telegram_user(db):
     return TelegramUser.objects.create(
         telegram_id=123456789, username='test_user', first_name='Test', email='test@example.com'
     )
@@ -25,15 +19,20 @@ def test_telegram_user_creation(telegram_user):
     assert telegram_user.username == 'test_user'
 
 
-def test_tariff_creation():
-    tariff = Tariff.objects.create(name=Tariff.Name.STARTER, requests_per_day=100)
+@pytest.fixture()
+def tariff(db):
+    tariff = Tariff.objects.create(name='STARTER', requests_per_day=100, amount=10.5)
+    return tariff
+
+
+def test_tariff_creation(tariff):
     assert Tariff.objects.count() == 1
-    assert tariff.name == Tariff.Name.STARTER
+    assert tariff.name == 'STARTER'
     assert tariff.requests_per_day == 100
+    assert tariff.amount == 10.5
 
 
-def test_subscription_creation(telegram_user):
-    tariff = Tariff.objects.create(name=Tariff.Name.STARTER, requests_per_day=100)
+def test_subscription_creation(telegram_user, tariff):
     subscription = Subscription.objects.create(
         user=telegram_user, tariff=tariff, start_date=timezone.now(), end_date=timezone.now()
     )
@@ -43,7 +42,7 @@ def test_subscription_creation(telegram_user):
 
 
 @pytest.fixture()
-def contacts():
+def contacts(db):
     contract_from = Contract.objects.create(address='from_contract', name='From Contract', decimals=18)
     contract_to = Contract.objects.create(address='to_contract', name='To Contract', decimals=18)
     return contract_from, contract_to
@@ -58,14 +57,57 @@ def test_rate_creation(contacts):
     assert rate.rate == 1.23456789
 
 
-def test_payment_creation(telegram_user):
-    tariff = Tariff.objects.create(name=Tariff.Name.STARTER, requests_per_day=100)
-    payment = Payment.objects.create(
-        user=telegram_user, tariff=tariff, amount=-100.50, transaction_id='payment_123'
+def test_refund_creation(db):
+    refund = Refund.objects.create(
+        amount=50.00, address='0x1234567890abcdef'
     )
+
+    assert Refund.objects.count() == 1
+    assert refund.amount == 50.00
+    assert refund.address == '0x1234567890abcdef'
+    assert refund.is_executed is False
+
+
+def test_refund_amount_validation(db):
+    with pytest.raises(ValueError, match='Refund amount must be positive'):
+        Refund.objects.create(amount=-10.00, address='0xabcdef1234567890')
+
+
+def test_payment_with_subscription(db, telegram_user, tariff):
+    subscription = Subscription.objects.create(
+        user=telegram_user, tariff=tariff, start_date='2024-01-01', end_date='2024-12-31'
+    )
+
+    payment = Payment.objects.create(
+        user=telegram_user,
+        related_model_type=ContentType.objects.get_for_model(Subscription),
+        related_model_id=subscription.id,
+        amount=100.50,
+        type=Payment.Type.SUBSCRIPTION
+    )
+
     assert Payment.objects.count() == 1
     assert payment.user == telegram_user
-    assert payment.tariff == tariff
-    assert payment.amount == -100.50
-    assert payment.transaction_id == 'payment_123'
+    assert payment.related_object == subscription
+    assert payment.amount == 100.50
     assert payment.type == Payment.Type.SUBSCRIPTION
+
+
+def test_payment_with_refund(db, telegram_user):
+    refund = Refund.objects.create(
+        amount=50.00, address='0x1234567890abcdef'
+    )
+
+    refund_payment = Payment.objects.create(
+        user=telegram_user,
+        related_model_type=ContentType.objects.get_for_model(Refund),
+        related_model_id=refund.id,
+        amount=-50.00,
+        type=Payment.Type.REFUND
+    )
+
+    assert Payment.objects.count() == 1
+    assert refund_payment.user == telegram_user
+    assert refund_payment.related_object == refund
+    assert refund_payment.amount == -50.00
+    assert refund_payment.type == Payment.Type.REFUND

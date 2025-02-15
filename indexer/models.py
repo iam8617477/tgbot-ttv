@@ -25,16 +25,18 @@ class Contract(TimestampedModel):
 
 class Block(TimestampedModel):
     contract = models.ForeignKey(Contract, related_name='blocks', on_delete=models.CASCADE)
-    block_id = models.BigIntegerField()
+    number = models.BigIntegerField()
+    processed = models.BooleanField(default=False)
+    error_message = models.CharField(max_length=255, blank=True, null=True)
 
     class Meta:
-        unique_together = ('contract', 'block_id')
+        unique_together = ('contract', 'number')
         indexes = [
             models.Index(fields=['contract']),
         ]
 
     def __str__(self):
-        return f'Block {self.block_id} for Contract {self.contract.address}'
+        return f'Block {self.number} for Contract {self.contract.address}'
 
 
 class Event(TimestampedModel):
@@ -43,10 +45,10 @@ class Event(TimestampedModel):
 
     transaction_id = models.CharField(max_length=255, unique=True)
     name = models.CharField(max_length=255, choices=Name.choices, default=Name.TRANSFER)
-    value = models.BigIntegerField()
+    value = models.CharField(max_length=255)
     contract_address = models.ForeignKey(Contract, related_name='events', on_delete=models.CASCADE)
     to_address = models.ForeignKey(Wallet, related_name='events', on_delete=models.CASCADE)
-    block = models.ForeignKey(Block, related_name='events', on_delete=models.CASCADE)
+    block = models.ForeignKey(Block, related_name='events', on_delete=models.PROTECT)
     unconfirmed = models.BooleanField(default=False)
 
     class Meta:
@@ -57,4 +59,4 @@ class Event(TimestampedModel):
         ]
 
     def __str__(self):
-        return f'Event {self.name} ({self.transaction_id}) in Block {self.block.block_id}'
+        return f'Event {self.name} ({self.transaction_id}) in Block {self.block.number}'

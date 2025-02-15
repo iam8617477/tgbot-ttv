@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
@@ -22,6 +24,7 @@ def test_telegram_user_creation(telegram_user):
 @pytest.fixture()
 def tariff(db):
     tariff = Tariff.objects.create(name='STARTER', requests_per_day=100, amount=10.5)
+    tariff.refresh_from_db()
     return tariff
 
 
@@ -37,6 +40,7 @@ def test_subscription_creation(telegram_user, tariff):
         user=telegram_user, tariff=tariff, start_date=timezone.now(), end_date=timezone.now()
     )
     assert Subscription.objects.count() == 1
+    subscription.refresh_from_db()
     assert subscription.user == telegram_user
     assert subscription.tariff == tariff
 
@@ -52,9 +56,10 @@ def test_rate_creation(contacts):
     contract_from, contract_to = contacts
     rate = Rate.objects.create(from_contract=contract_from, to_contract=contract_to, rate=1.23456789)
     assert Rate.objects.count() == 1
+    rate.refresh_from_db()
     assert rate.from_contract == contract_from
     assert rate.to_contract == contract_to
-    assert rate.rate == 1.23456789
+    assert rate.rate == Decimal('1.23456789')
 
 
 def test_refund_creation(db):
@@ -63,6 +68,7 @@ def test_refund_creation(db):
     )
 
     assert Refund.objects.count() == 1
+    refund.refresh_from_db()
     assert refund.amount == 50.00
     assert refund.address == '0x1234567890abcdef'
     assert refund.is_executed is False
@@ -87,6 +93,7 @@ def test_payment_with_subscription(db, telegram_user, tariff):
     )
 
     assert Payment.objects.count() == 1
+    payment.refresh_from_db()
     assert payment.user == telegram_user
     assert payment.related_object == subscription
     assert payment.amount == 100.50
@@ -107,6 +114,7 @@ def test_payment_with_refund(db, telegram_user):
     )
 
     assert Payment.objects.count() == 1
+    refund.refresh_from_db()
     assert refund_payment.user == telegram_user
     assert refund_payment.related_object == refund
     assert refund_payment.amount == -50.00

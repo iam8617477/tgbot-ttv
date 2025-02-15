@@ -21,7 +21,7 @@ class ContractAdmin(DefaultAdmin):
 
 @admin.register(Block)
 class BlockAdmin(DefaultAdmin):
-    pass
+    list_filter = ('contract', 'processed',)
 
 
 @admin.register(Event)

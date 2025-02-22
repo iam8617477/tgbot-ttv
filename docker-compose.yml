@@ -33,7 +33,7 @@ services:
       sh -c "
         echo 'Waiting 15 seconds before starting...';
         sleep 15;
-        python run.py"
+        python bot/run.py"
     networks:
       - public_network
       - tgbot_to_db

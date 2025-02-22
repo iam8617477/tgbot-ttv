@@ -1,4 +1,6 @@
 import os
+import sys
+
 import django
 import logging
 from telegram import Update
@@ -6,9 +8,11 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from django.conf import settings
 from asgiref.sync import sync_to_async
 
-
+BASE_DIR = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), '..'))
+sys.path.append(BASE_DIR)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'app.settings')
 django.setup()
+
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
